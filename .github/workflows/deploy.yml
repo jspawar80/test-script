@@ -27,31 +27,24 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: ${{ secrets.AWS_REGION }}
  
-
-    - name: Login to Amazon ECR
-      id: login-ecr
-      uses: aws-actions/amazon-ecr-login@v1
-
     - name: Download task definition
       run: |
         aws ecs describe-task-definition --task-definition ${{ env.TASK_DEFINITION }} --query "taskDefinition" > task-definition.json
 
+    - name: Fill in the new image ID in the task definition
+      run: |
+        ./.github/scripts/task-def.sh "${{ needs.build-and-push.outputs.image }}" "${{ env.TASK_DEFINITION_PATH }}"
+      env:
+        TASK_DEFINITION_PATH: task-definition.json
 
     - name: Register task definition
-      id: register-task-definition
       run: |
-        TASK_DEFINITION=$(sed -e "s|<IMAGE_NAME>|${{ steps.login-ecr.outputs.registry }}/lynk-api-prod:latest|g" task-definition.json)
-        echo $TASK_DEFINITION > temp.json
-        aws ecs register-task-definition --cli-input-json file://temp.json
+        aws ecs register-task-definition --cli-input-json file://task-definition.json
+        taskDef=$(aws ecs describe-task-definition --task-definition ${{ env.TASK_DEFINITION }} --query "taskDefinition.taskDefinitionArn")
+        echo "TASK_DEFINITION=$taskDef" >> $GITHUB_ENV
 
     - name: Update ECS service
       run: |
-        aws ecs update-service --cluster lynk-api --service lynk-api --task-definition ${{ steps.register-task-definition.outputs.task-definition-arn }}
-   
-    - name: Update ECS service desired task to 0
-      run: |
-        aws ecs update-service --cluster lynk-api --service lynk-api --desired-count 0
-
-    - name: Update ECS service desired task to 1
-      run: |
-        aws ecs update-service --cluster lynk-api --service lynk-api --desired-count 1 --desired-count 1
+        aws ecs update-service --cluster ${{ env.CLUSTER_NAME }} --service ${{ env.SERVICE_NAME }} --task-definition $TASK_DEFINITION --desired-count 0
+        sleep 60 # wait for tasks to stop
+        aws ecs update-service --cluster ${{ env.CLUSTER_NAME }} --service ${{ env.SERVICE_NAME }} --task-definition $TASK_DEFINITION --desired-count 1
