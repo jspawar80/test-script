@@ -1,0 +1,39 @@
+name: Build and Push to ECR and Deploy to ECS
+
+on:
+  release:
+    types: [published]
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # The first job in this workflow is named build-on-windows
+  build-on-ubuntu:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      - name: Step 1 - Log the pre-build disc space
+        run: ls
+
+      - name: Run build script
+        run: |
+            ls -a
+            pwd
+            chmod +x .github/scripts/build.sh
+            ./.github/scripts/build.sh
+        shell: bash
+
+      - name: List files in current directory
+        run: ls -al
+
+      - name: Fill in the new image ID in the task definition
+        run: |
+           chmod +x task-def.sh
+           ./task-def.sh "${{ needs.build-and-push.outputs.image }}"
+        shell: bash
+        env:
+          TASK_DEFINITION_PATH: task-definition.json
