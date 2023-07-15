@@ -1,51 +1,51 @@
 name: Build and Push to ECR and Deploy to ECS
 
 on:
-  release:
-    types: [published]
+  push:
+    branches: [main]
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: lynk-api
+  TASK_DEFINITION: lynk-api-prod
+  SERVICE_NAME: lynk-api-prod
+  CLUSTER_NAME: lynk-api-prod
+
 jobs:
-  # The first job in this workflow is named build-on-windows
- build-and-push:
-    # The type of runner that the job will run on
+  build-and-push:
+    name: Build and push Docker image
     runs-on: ubuntu-latest
 
-    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v2
+    - name: Checkout code
+      uses: actions/checkout@v2
+    
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: AKIA2ZBFUJ4NDFYXF5UD
+        aws-secret-access-key: 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
+        aws-region: us-east-1
 
-      - name: Step 1 - Log the pre-build disc space
-        run: ls
+    - name: Download task definition
+      run: |
+        aws ecs describe-task-definition --task-definition ${{ env.TASK_DEFINITION }} --query "taskDefinition" > task-definition.json
 
-      - name: List files in current directory
-        run: ls -al
+    - name: Fill in the new image ID in the task definition
+      run: |
+        chmod +x task-def.sh
+        ./task-def.sh "${{ needs.build-and-push.outputs.image }}" "${{ env.TASK_DEFINITION_PATH }}"
+      env:
+        TASK_DEFINITION_PATH: task-definition.json
 
-      - name: Fill in the new image ID in the task definition
-        run: |
-           chmod +x task-def.sh
-           ./task-def.sh "${{ needs.build-and-push.outputs.image }}"
-        shell: bash
-        env:
-          TASK_DEFINITION_PATH: task-definition.json
-  
- deploy:
-    # The type of runner that the job will run on
-    runs-on: ubuntu-latest
+    - name: Register task definition
+      run: |
+        aws ecs register-task-definition --cli-input-json file://task-definition.json
+        taskDef=$(aws ecs describe-task-definition --task-definition ${{ env.TASK_DEFINITION }} --query "taskDefinition.taskDefinitionArn")
+        echo "TASK_DEFINITION=$taskDef" >> $GITHUB_ENV
 
-    # Steps represent a sequence of tasks that will be executed as part of the job
-    steps:
-      - name: Step 1 - Log the pre-build disc space
-        run: ls
-
-      - name: List files in current directory
-        run: ls -al
-
-      - name: Fill in the new image ID in the task definition
-        run: |
-           chmod +x task-def.sh
-           ./task-def.sh "${{ needs.build-and-push.outputs.image }}"
-        shell: bash
-        env:
-          TASK_DEFINITION_PATH: task-definition.json
+    - name: Update ECS service
+      run: |
+        aws ecs update-service --cluster ${{ env.CLUSTER_NAME }} --service ${{ env.SERVICE_NAME }} --task-definition $TASK_DEFINITION --desired-count 0
+        sleep 60 # wait for tasks to stop
+        aws ecs update-service --cluster ${{ env.CLUSTER_NAME }} --service ${{ env.SERVICE_NAME }} --task-definition $TASK_DEFINITION
