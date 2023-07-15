@@ -1,0 +1,130 @@
+{
+    "taskDefinitionArn": "arn:aws:ecs:us-east-1:740960784154:task-definition/lynk-api-prod:12",
+    "containerDefinitions": [
+        {
+            "name": "lynk-api-prod",
+            "image": "740960784154.dkr.ecr.us-east-1.amazonaws.com/lynk-api:v0.0.4",
+            "cpu": 0,
+            "portMappings": [
+                {
+                    "name": "lynk-api-prod-3000-tcp",
+                    "containerPort": 3000,
+                    "hostPort": 3000,
+                    "protocol": "tcp",
+                    "appProtocol": "http"
+                }
+            ],
+            "essential": true,
+            "environment": [
+                {
+                    "name": "ALLOWED_ORIGINS",
+                    "value": "https://app.interlynk.io,https://api.interlynk.io,https://hopsotch.io,http://app.interlynk.io,http://api.interlynk.io"
+                },
+                {
+                    "name": "RAILS_ENV",
+                    "value": "production"
+                },
+                {
+                    "name": "POSTGRES_USERNAME",
+                    "value": "lynk_api"
+                },
+                {
+                    "name": "POSTGRES_HOST",
+                    "value": "lynk-postgresql-prod.c4pdpx5d6suu.us-east-1.rds.amazonaws.com"
+                },
+                {
+                    "name": "POSTGRES_PASSWORD",
+                    "value": "lynk_api1234!"
+                },
+                {
+                    "name": "POSTGRES_PORT",
+                    "value": "5432"
+                },
+                {
+                    "name": "RAILS_MASTER_KEY",
+                    "value": "c179e08be63231575184e4dfd6112611"
+                },
+                {
+                    "name": "REDIS_URL",
+                    "value": "redis://lynk-redis-prod.sy2pzb.ng.0001.use1.cache.amazonaws.com:6379/1"
+                }
+            ],
+            "environmentFiles": [],
+            "mountPoints": [],
+            "volumesFrom": [],
+            "ulimits": [],
+            "logConfiguration": {
+                "logDriver": "awslogs",
+                "options": {
+                    "awslogs-create-group": "true",
+                    "awslogs-group": "/ecs/lynk-api-prod",
+                    "awslogs-region": "us-east-1",
+                    "awslogs-stream-prefix": "ecs"
+                }
+            },
+            "healthCheck": {
+                "command": [
+                    "CMD-SHELL",
+                    "curl -f http://localhost:3000/healthz || exit 1"
+                ],
+                "interval": 30,
+                "timeout": 5,
+                "retries": 3
+            }
+        }
+    ],
+    "family": "lynk-api-prod",
+    "executionRoleArn": "arn:aws:iam::740960784154:role/ecsTaskExecutionRole",
+    "networkMode": "awsvpc",
+    "revision": 12,
+    "volumes": [],
+    "status": "ACTIVE",
+    "requiresAttributes": [
+        {
+            "name": "com.amazonaws.ecs.capability.logging-driver.awslogs"
+        },
+        {
+            "name": "com.amazonaws.ecs.capability.docker-remote-api.1.24"
+        },
+        {
+            "name": "ecs.capability.execution-role-awslogs"
+        },
+        {
+            "name": "com.amazonaws.ecs.capability.ecr-auth"
+        },
+        {
+            "name": "com.amazonaws.ecs.capability.docker-remote-api.1.19"
+        },
+        {
+            "name": "ecs.capability.container-health-check"
+        },
+        {
+            "name": "ecs.capability.execution-role-ecr-pull"
+        },
+        {
+            "name": "com.amazonaws.ecs.capability.docker-remote-api.1.18"
+        },
+        {
+            "name": "ecs.capability.task-eni"
+        },
+        {
+            "name": "com.amazonaws.ecs.capability.docker-remote-api.1.29"
+        }
+    ],
+    "placementConstraints": [],
+    "compatibilities": [
+        "EC2"
+    ],
+    "requiresCompatibilities": [
+        "EC2"
+    ],
+    "cpu": "2048",
+    "memory": "3891",
+    "runtimePlatform": {
+        "cpuArchitecture": "X86_64",
+        "operatingSystemFamily": "LINUX"
+    },
+    "registeredAt": "2023-07-14T16:48:17.221Z",
+    "registeredBy": "arn:aws:iam::740960784154:user/jay.pawar",
+    "tags": []
+}
