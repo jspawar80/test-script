@@ -32,6 +32,11 @@ jobs:
       id: login-ecr
       uses: aws-actions/amazon-ecr-login@v1
 
+    - name: Download task definition
+      run: |
+        aws ecs describe-task-definition --task-definition ${{ env.TASK_DEFINITION }} --query "taskDefinition" > task-definition.json
+
+
     - name: Register task definition
       id: register-task-definition
       run: |
