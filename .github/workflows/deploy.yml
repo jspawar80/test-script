@@ -33,7 +33,7 @@ jobs:
 
     - name: Fill in the new image ID in the task definition
       run: |
-        ./.github/scripts/task-def.sh "${{ needs.build-and-push.outputs.image }}" "${{ env.TASK_DEFINITION_PATH }}"
+        ./task-def.sh "${{ needs.build-and-push.outputs.image }}" "${{ env.TASK_DEFINITION_PATH }}"
       env:
         TASK_DEFINITION_PATH: task-definition.json
 
