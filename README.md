@@ -1,4 +1,4 @@
-ECR_REPOSITORY: lynk-api
+<ECR_REPOSITORY>: lynk-api
 TASK_DEFINITION: lynk-api-prod
 SERVICE_NAME: lynk-api-prod
 CLUSTER_NAME: lynk-api-prod
