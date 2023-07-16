@@ -1,3 +1,83 @@
+# name: Build and Push to ECR and Deploy to ECS
+
+# on:
+#   push:
+#     branches: [main]
+
+# env:
+#   AWS_REGION: us-east-1
+#   ECR_REPOSITORY: lynk-api
+#   TASK_DEFINITION: lynk-api-prod
+#   SERVICE_NAME: lynk-api-prod
+#   CLUSTER_NAME: lynk-api-prod
+
+# jobs:
+#   build-and-push:
+#     name: Build and push Docker image
+#     runs-on: ubuntu-latest
+
+#     steps:
+#     - name: Checkout code
+#       uses: actions/checkout@v2
+    
+#     - name: Configure AWS credentials
+#       uses: aws-actions/configure-aws-credentials@v1
+#       with:
+#         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+#         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+#         aws-region: ${{ secrets.AWS_REGION }}
+ 
+
+#     - name: Get latest image tag from ECR
+#       id: ecr
+#       run: |
+#         REPO_NAME="lynk-api"
+#         AWS_REGION="us-east-1"
+#         IMAGE_TAG=$(aws ecr list-images --repository-name ${REPO_NAME} --region ${AWS_REGION} --query 'sort_by(imageIds,&imageTag)[-1].imageTag' --output text)
+#         echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV   
+
+#     - name: Get current task definition
+#       id: ecs
+#       run: |
+#         TASK_FAMILY="lynk-api-prod"
+#         aws ecs describe-task-definition --task-definition ${TASK_FAMILY} | jq -r '.taskDefinition | {family: .family, executionRoleArn: .executionRoleArn, networkMode: .networkMode, volumes: .volumes, placementConstraints: .placementConstraints, requiresCompatibilities: .requiresCompatibilities, cpu: .cpu, memory: .memory, containerDefinitions: .containerDefinitions}' > task-definition.json
+
+#         if [ "$(jq -r '.taskRoleArn' task-definition.json)" == "null" ]; then
+#             jq -r 'del(.taskRoleArn)' task-definition.json > temp.json && mv temp.json task-definition.json
+#         fi
+ 
+ 
+# #     - name: Update task definition with latest image tag
+# #       run: |
+# #         REPO_NAME="lynk-api"
+# #         jq -r --arg IMAGE_TAG ${IMAGE_TAG} '.containerDefinitions[0].image = "740960784154.dkr.ecr.us-east-1.amazonaws.com/'${REPO_NAME}':'${IMAGE_TAG}'"' task-definition.json > new-task-definition.json
+      
+#     - name: Update task definition with latest image tag and environment variables
+#       run: |
+#        REPO_NAME="lynk-api"
+#        RAILS_ENV=${{ secrets.RAILS_ENV }}
+#        POSTGRES_USERNAME=${{ secrets.POSTGRES_USERNAME }}
+#        POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+#        POSTGRES_HOST=${{ secrets.POSTGRES_HOST }}
+#        POSTGRES_PORT=${{ secrets.POSTGRES_PORT }}
+#        RAILS_MASTER_KEY=${{ secrets.RAILS_MASTER_KEY }}
+#        REDIS_URL=${{ secrets.REDIS_URL }}
+#        ALLOWED_ORIGINS=${{ secrets.ALLOWED_ORIGINS }}
+
+#        jq --arg IMAGE_TAG ${IMAGE_TAG} --arg RAILS_ENV ${RAILS_ENV} --arg POSTGRES_USERNAME ${POSTGRES_USERNAME} --arg POSTGRES_PASSWORD ${POSTGRES_PASSWORD} --arg POSTGRES_HOST ${POSTGRES_HOST} --arg POSTGRES_PORT ${POSTGRES_PORT} --arg RAILS_MASTER_KEY ${RAILS_MASTER_KEY} --arg REDIS_URL ${REDIS_URL} --arg ALLOWED_ORIGINS ${ALLOWED_ORIGINS} '.containerDefinitions[0].image = "740960784154.dkr.ecr.us-east-1.amazonaws.com/'${REPO_NAME}':'${IMAGE_TAG}'" | .containerDefinitions[0].environment = [{name: "RAILS_ENV", value: $RAILS_ENV}, {name: "POSTGRES_USERNAME", value: $POSTGRES_USERNAME}, {name: "POSTGRES_PASSWORD", value: $POSTGRES_PASSWORD}, {name: "POSTGRES_HOST", value: $POSTGRES_HOST}, {name: "POSTGRES_PORT", value: $POSTGRES_PORT}, {name: "RAILS_MASTER_KEY", value: $RAILS_MASTER_KEY}, {name: "REDIS_URL", value: $REDIS_URL}, {name: "ALLOWED_ORIGINS", value: $ALLOWED_ORIGINS}]' task-definition.json > new-task-definition.json
+
+
+
+#     - name: Register a new revision of the task definition
+#       run: |
+#         aws ecs register-task-definition --cli-input-json file://new-task-definition.json
+        
+#     - name: Update ECS service
+#       run: |
+#         aws ecs update-service --cluster ${{ env.CLUSTER_NAME }} --service ${{ env.SERVICE_NAME }} --task-definition $TASK_DEFINITION --desired-count 0
+#         sleep 60 # wait for tasks to stop
+#         aws ecs update-service --cluster ${{ env.CLUSTER_NAME }} --service ${{ env.SERVICE_NAME }} --task-definition $TASK_DEFINITION --desired-coun 1
+
 name: Build and Push to ECR and Deploy to ECS
 
 on:
@@ -5,11 +85,12 @@ on:
     branches: [main]
 
 env:
-  AWS_REGION: us-east-1
-  ECR_REPOSITORY: lynk-api
-  TASK_DEFINITION: lynk-api-prod
-  SERVICE_NAME: lynk-api-prod
-  CLUSTER_NAME: lynk-api-prod
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
+  TASK_DEFINITION: ${{ secrets.TASK_DEFINITION }}
+  SERVICE_NAME: ${{ secrets.SERVICE_NAME }}
+  CLUSTER_NAME: ${{ secrets.CLUSTER_NAME }}
+  ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
 
 jobs:
   build-and-push:
@@ -26,35 +107,29 @@ jobs:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: ${{ secrets.AWS_REGION }}
- 
 
     - name: Get latest image tag from ECR
       id: ecr
       run: |
-        REPO_NAME="lynk-api"
-        AWS_REGION="us-east-1"
+        REPO_NAME="${{ secrets.ECR_REPOSITORY }}"
+        AWS_REGION="${{ secrets.AWS_REGION }}"
         IMAGE_TAG=$(aws ecr list-images --repository-name ${REPO_NAME} --region ${AWS_REGION} --query 'sort_by(imageIds,&imageTag)[-1].imageTag' --output text)
         echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV   
 
     - name: Get current task definition
       id: ecs
       run: |
-        TASK_FAMILY="lynk-api-prod"
+        TASK_FAMILY="${{ secrets.TASK_DEFINITION }}"
         aws ecs describe-task-definition --task-definition ${TASK_FAMILY} | jq -r '.taskDefinition | {family: .family, executionRoleArn: .executionRoleArn, networkMode: .networkMode, volumes: .volumes, placementConstraints: .placementConstraints, requiresCompatibilities: .requiresCompatibilities, cpu: .cpu, memory: .memory, containerDefinitions: .containerDefinitions}' > task-definition.json
 
         if [ "$(jq -r '.taskRoleArn' task-definition.json)" == "null" ]; then
             jq -r 'del(.taskRoleArn)' task-definition.json > temp.json && mv temp.json task-definition.json
         fi
  
- 
-#     - name: Update task definition with latest image tag
-#       run: |
-#         REPO_NAME="lynk-api"
-#         jq -r --arg IMAGE_TAG ${IMAGE_TAG} '.containerDefinitions[0].image = "740960784154.dkr.ecr.us-east-1.amazonaws.com/'${REPO_NAME}':'${IMAGE_TAG}'"' task-definition.json > new-task-definition.json
-      
     - name: Update task definition with latest image tag and environment variables
       run: |
-       REPO_NAME="lynk-api"
+       REPO_NAME="${{ secrets.ECR_REPOSITORY }}"
+       ACCOUNT_ID="${{ secrets.ACCOUNT_ID }}"
        RAILS_ENV=${{ secrets.RAILS_ENV }}
        POSTGRES_USERNAME=${{ secrets.POSTGRES_USERNAME }}
        POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
@@ -64,17 +139,14 @@ jobs:
        REDIS_URL=${{ secrets.REDIS_URL }}
        ALLOWED_ORIGINS=${{ secrets.ALLOWED_ORIGINS }}
 
-       jq --arg IMAGE_TAG ${IMAGE_TAG} --arg RAILS_ENV ${RAILS_ENV} --arg POSTGRES_USERNAME ${POSTGRES_USERNAME} --arg POSTGRES_PASSWORD ${POSTGRES_PASSWORD} --arg POSTGRES_HOST ${POSTGRES_HOST} --arg POSTGRES_PORT ${POSTGRES_PORT} --arg RAILS_MASTER_KEY ${RAILS_MASTER_KEY} --arg REDIS_URL ${REDIS_URL} --arg ALLOWED_ORIGINS ${ALLOWED_ORIGINS} '.containerDefinitions[0].image = "740960784154.dkr.ecr.us-east-1.amazonaws.com/'${REPO_NAME}':'${IMAGE_TAG}'" | .containerDefinitions[0].environment = [{name: "RAILS_ENV", value: $RAILS_ENV}, {name: "POSTGRES_USERNAME", value: $POSTGRES_USERNAME}, {name: "POSTGRES_PASSWORD", value: $POSTGRES_PASSWORD}, {name: "POSTGRES_HOST", value: $POSTGRES_HOST}, {name: "POSTGRES_PORT", value: $POSTGRES_PORT}, {name: "RAILS_MASTER_KEY", value: $RAILS_MASTER_KEY}, {name: "REDIS_URL", value: $REDIS_URL}, {name: "ALLOWED_ORIGINS", value: $ALLOWED_ORIGINS}]' task-definition.json > new-task-definition.json
-
-
+       jq --arg IMAGE_TAG ${IMAGE_TAG} --arg RAILS_ENV ${RAILS_ENV} --arg POSTGRES_USERNAME ${POSTGRES_USERNAME} --arg POSTGRES_PASSWORD ${POSTGRES_PASSWORD} --arg POSTGRES_HOST ${POSTGRES_HOST} --arg POSTGRES_PORT ${POSTGRES_PORT} --arg RAILS_MASTER_KEY ${RAILS_MASTER_KEY} --arg REDIS_URL ${REDIS_URL} --arg ALLOWED_ORIGINS ${ALLOWED_ORIGINS} '.containerDefinitions[0].image = "'${ACCOUNT_ID}'.dkr.ecr.'${AWS_REGION}'.amazonaws.com/'${REPO_NAME}':'${IMAGE_TAG}'" | .containerDefinitions[0].environment = [{name: "RAILS_ENV", value: $RAILS_ENV}, {name: "POSTGRES_USERNAME", value: $POSTGRES_USERNAME}, {name: "POSTGRES_PASSWORD", value: $POSTGRES_PASSWORD}, {name: "POSTGRES_HOST", value: $POSTGRES_HOST}, {name: "POSTGRES_PORT", value: $POSTGRES_PORT}, {name: "RAILS_MASTER_KEY", value: $RAILS_MASTER_KEY}, {name: "REDIS_URL", value: $REDIS_URL}, {name: "ALLOWED_ORIGINS", value: $ALLOWED_ORIGINS}]' task-definition.json > new-task-definition.json
 
     - name: Register a new revision of the task definition
       run: |
         aws ecs register-task-definition --cli-input-json file://new-task-definition.json
         
-    - name: Update ECS service
-      run: |
-        aws ecs update-service --cluster ${{ env.CLUSTER_NAME }} --service ${{ env.SERVICE_NAME }} --task-definition $TASK_DEFINITION --desired-count 0
-        sleep 60 # wait for tasks to stop
-        aws ecs update-service --cluster ${{ env.CLUSTER_NAME }} --service ${{ env.SERVICE_NAME }} --task-definition $TASK_DEFINITION --desired-coun 1
-
+    # - name: Update ECS service
+    #   run: |
+    #     aws ecs update-service --cluster ${{ env.CLUSTER_NAME }} --service ${{ env.SERVICE_NAME }} --task-definition $TASK_DEFINITION --desired-count 0
+    #     sleep 60 # wait for tasks to stop
+    #     aws ecs update-service --cluster ${{ env.CLUSTER_NAME }} --service ${{ env.SERVICE_NAME }} --task-definition $TASK_DEFINITION --desired-count 1
