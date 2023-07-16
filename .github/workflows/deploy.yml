@@ -91,6 +91,7 @@ env:
   SERVICE_NAME: ${{ secrets.SERVICE_NAME }}
   CLUSTER_NAME: ${{ secrets.CLUSTER_NAME }}
   ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
+  DESIRED_COUNT: ${{ secrets.DESIRED_COUNT }}
 
 jobs:
   build-and-push:
@@ -149,4 +150,4 @@ jobs:
     #   run: |
     #     aws ecs update-service --cluster ${{ env.CLUSTER_NAME }} --service ${{ env.SERVICE_NAME }} --task-definition $TASK_DEFINITION --desired-count 0
     #     sleep 60 # wait for tasks to stop
-    #     aws ecs update-service --cluster ${{ env.CLUSTER_NAME }} --service ${{ env.SERVICE_NAME }} --task-definition $TASK_DEFINITION --desired-count 1
+    #     aws ecs update-service --cluster ${{ env.CLUSTER_NAME }} --service ${{ env.SERVICE_NAME }} --task-definition $TASK_DEFINITION --desired-count ${{ env.DESIRED_COUNT }}
