@@ -49,15 +49,14 @@ jobs:
     - name: Add environment variables to task definition
       run: |
         jq '.containerDefinitions[0].environment += [{"name": "RAILS_ENV", "value": "development"},{"name": "POSTGRES_USERNAME", "value": "${{ secrets.POSTGRES_USERNAME }}"},{"name": "POSTGRES_PASSWORD", "value": "${{ secrets.POSTGRES_PASSWORD }}"},{"name": "POSTGRES_HOST", "value": "${{ secrets.POSTGRES_HOST }}"},{"name": "POSTGRES_PORT", "value": "${{ secrets.POSTGRES_PORT }}"},{"name": "RAILS_MASTER_KEY", "value": "${{ secrets.RAILS_MASTER_KEY }}"},{"name": "REDIS_URL", "value": "${{ secrets.REDIS_URL }}"},{"name": "ALLOWED_ORIGINS", "value": "${{ secrets.ALLOWED_ORIGINS }}"}]' task-definition.json > task-definition.json
-
+        cat task-definition.json
  
     - name: Update task definition with latest image tag
       run: |
         REPO_NAME="lynk-api"
         jq -r --arg IMAGE_TAG ${IMAGE_TAG} '.containerDefinitions[0].image = "740960784154.dkr.ecr.us-east-1.amazonaws.com/'${REPO_NAME}':'${IMAGE_TAG}'"' task-definition.json > new-task-definition.json
+      
 
-    - name: Print out the new task definition JSON
-      run: cat new-task-definition.json
 
     - name: Register a new revision of the task definition
       run: |
