@@ -40,8 +40,11 @@ jobs:
       id: ecs
       run: |
         TASK_FAMILY="lynk-api-prod"
-        aws ecs describe-task-definition --task-definition ${TASK_FAMILY} | jq -r '.taskDefinition | {family: .family, taskRoleArn: .taskRoleArn, executionRoleArn: .executionRoleArn, networkMode: .networkMode, volumes: .volumes, placementConstraints: .placementConstraints, requiresCompatibilities: .requiresCompatibilities, cpu: .cpu, memory: .memory, containerDefinitions: .containerDefinitions}' > task-definition.json
+        aws ecs describe-task-definition --task-definition ${TASK_FAMILY} | jq -r '.taskDefinition | {family: .family, executionRoleArn: .executionRoleArn, networkMode: .networkMode, volumes: .volumes, placementConstraints: .placementConstraints, requiresCompatibilities: .requiresCompatibilities, cpu: .cpu, memory: .memory, containerDefinitions: .containerDefinitions}' > task-definition.json
 
+        if [ "$(jq -r '.taskRoleArn' task-definition.json)" == "null" ]; then
+            jq -r 'del(.taskRoleArn)' task-definition.json > temp.json && mv temp.json task-definition.json
+        fi
 
     - name: Update task definition with latest image tag
       run: |
