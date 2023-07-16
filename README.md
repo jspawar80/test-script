@@ -4,6 +4,7 @@ SERVICE_NAME: lynk-api-prod
 CLUSTER_NAME: lynk-api-prod
 TASK_FAMILY: lynk-api-prod
 REPO_NAME: lynk-api-prod
+DESIRED_COUNT: 1
 ACCOUNT_ID: 740960784154
 RAILS_ENV: production
 POSTGRES_USERNAME=lynk_api
