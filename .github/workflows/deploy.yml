@@ -27,25 +27,25 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: ${{ secrets.AWS_REGION }}
  
-    - name: Download task definition
-      run: |
-        aws ecs describe-task-definition --task-definition ${{ env.TASK_DEFINITION }} --query "taskDefinition" > task-definition.json
 
-    - name: Fill in the new image ID in the task definition
+    - name: Get latest image tag from ECR
+      id: ecr
       run: |
-        chmod +x task-def.sh
-        ./task-def.sh "${{ needs.build-and-push.outputs.image }}" "${{ env.TASK_DEFINITION_PATH }}"
-      env:
-        TASK_DEFINITION_PATH: task-definition.json
+        REPO_NAME="lynk-api"
+        AWS_REGION="us-east-1"
+        IMAGE_TAG=$(aws ecr list-images --repository-name ${REPO_NAME} --region ${AWS_REGION} --query 'sort_by(imageIds,&imagePushedAt)[-1].imageTag' --output text)
+        echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
 
-    - name: Register task definition
+    - name: Get current task definition
+      id: ecs
       run: |
-        aws ecs register-task-definition --cli-input-json file://task-definition.json
-        taskDef=$(aws ecs describe-task-definition --task-definition ${{ env.TASK_DEFINITION }} --query "taskDefinition.taskDefinitionArn")
-        echo "TASK_DEFINITION=$taskDef" >> $GITHUB_ENV
+        TASK_FAMILY="lynk-api-prod"
+        aws ecs describe-task-definition --task-definition ${TASK_FAMILY} --query 'taskDefinition' > task-definition.json
 
-    - name: Update ECS service
+    - name: Update task definition with latest image tag
       run: |
-        aws ecs update-service --cluster ${{ env.CLUSTER_NAME }} --service ${{ env.SERVICE_NAME }} --task-definition $TASK_DEFINITION --desired-count 0
-        sleep 60 # wait for tasks to stop
-        aws ecs update-service --cluster ${{ env.CLUSTER_NAME }} --service ${{ env.SERVICE_NAME }} --task-definition $TASK_DEFINITION --desired-count 1
+        jq -r --arg IMAGE_TAG ${IMAGE_TAG} '.containerDefinitions[0].image = "740960784154.dkr.ecr.us-east-1.amazonaws.com/'${REPO_NAME}':'${IMAGE_TAG}'"' task-definition.json > new-task-definition.json
+
+    - name: Register a new revision of the task definition
+      run: |
+        aws ecs register-task-definition --cli-input-json file://new-task-definition.json
