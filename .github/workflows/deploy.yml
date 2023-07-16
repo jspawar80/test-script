@@ -56,6 +56,9 @@ jobs:
         REPO_NAME="lynk-api"
         jq -r --arg IMAGE_TAG ${IMAGE_TAG} '.containerDefinitions[0].image = "740960784154.dkr.ecr.us-east-1.amazonaws.com/'${REPO_NAME}':'${IMAGE_TAG}'"' task-definition.json > new-task-definition.json
 
+    - name: Print out the new task definition JSON
+      run: cat new-task-definition.json
+
     - name: Register a new revision of the task definition
       run: |
         aws ecs register-task-definition --cli-input-json file://new-task-definition.json
