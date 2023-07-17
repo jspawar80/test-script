@@ -85,13 +85,12 @@ on:
     branches: [master]
 
 env:
-  AWS_REGION: ${{ secrets.AWS_REGION }}
-  ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
-  TASK_DEFINITION: ${{ secrets.TASK_DEFINITION }}
-  SERVICE_NAME: ${{ secrets.SERVICE_NAME }}
-  CLUSTER_NAME: ${{ secrets.CLUSTER_NAME }}
-  ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
   DESIRED_COUNT: ${{ secrets.DESIRED_COUNT }}
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: lynk-api
+  TASK_DEFINITION: lynk-api-prod
+  SERVICE_NAME: lynk-api-prod
+  CLUSTER_NAME: lynk-api-prod
 
 jobs:
   build-and-push:
@@ -112,7 +111,7 @@ jobs:
     - name: Get latest image tag from ECR
       id: ecr
       run: |
-        REPO_NAME="${{ secrets.ECR_REPOSITORY }}"
+        REPO_NAME="lynk-api"
         AWS_REGION="${{ secrets.AWS_REGION }}"
         IMAGE_TAG=$(aws ecr list-images --repository-name ${REPO_NAME} --region ${AWS_REGION} --query 'sort_by(imageIds,&imageTag)[-1].imageTag' --output text)
         echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV   
@@ -120,7 +119,7 @@ jobs:
     - name: Get current task definition
       id: ecs
       run: |
-        TASK_FAMILY="${{ secrets.TASK_DEFINITION }}"
+        TTASK_FAMILY="lynk-api-prod"
         aws ecs describe-task-definition --task-definition ${TASK_FAMILY} | jq -r '.taskDefinition | {family: .family, executionRoleArn: .executionRoleArn, networkMode: .networkMode, volumes: .volumes, placementConstraints: .placementConstraints, requiresCompatibilities: .requiresCompatibilities, cpu: .cpu, memory: .memory, containerDefinitions: .containerDefinitions}' > task-definition.json
 
         if [ "$(jq -r '.taskRoleArn' task-definition.json)" == "null" ]; then
@@ -129,15 +128,15 @@ jobs:
  
     - name: Update task definition with latest image tag and environment variables
       run: |
-       REPO_NAME="${{ secrets.ECR_REPOSITORY }}"
+       REPO_NAME="lynk-api"
        ACCOUNT_ID="${{ secrets.ACCOUNT_ID }}"
-       RAILS_ENV=${{ secrets.RAILS_ENV }}
+       RAILS_ENV="production"
        POSTGRES_USERNAME=${{ secrets.POSTGRES_USERNAME }}
        POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
        POSTGRES_HOST=${{ secrets.POSTGRES_HOST }}
-       POSTGRES_PORT=${{ secrets.POSTGRES_PORT }}
+       POSTGRES_PORT="5432"
        RAILS_MASTER_KEY=${{ secrets.RAILS_MASTER_KEY }}
-       REDIS_URL=${{ secrets.REDIS_URL }}
+       REDIS_URL="redis://lynk-redis-prod.sy2pzb.ng.0001.use1.cache.amazonaws.com:6379/1"
        ALLOWED_ORIGINS=${{ secrets.ALLOWED_ORIGINS }}
 
        jq --arg IMAGE_TAG ${IMAGE_TAG} --arg RAILS_ENV ${RAILS_ENV} --arg POSTGRES_USERNAME ${POSTGRES_USERNAME} --arg POSTGRES_PASSWORD ${POSTGRES_PASSWORD} --arg POSTGRES_HOST ${POSTGRES_HOST} --arg POSTGRES_PORT ${POSTGRES_PORT} --arg RAILS_MASTER_KEY ${RAILS_MASTER_KEY} --arg REDIS_URL ${REDIS_URL} --arg ALLOWED_ORIGINS ${ALLOWED_ORIGINS} '.containerDefinitions[0].image = "'${ACCOUNT_ID}'.dkr.ecr.'${AWS_REGION}'.amazonaws.com/'${REPO_NAME}':'${IMAGE_TAG}'" | .containerDefinitions[0].environment = [{name: "RAILS_ENV", value: $RAILS_ENV}, {name: "POSTGRES_USERNAME", value: $POSTGRES_USERNAME}, {name: "POSTGRES_PASSWORD", value: $POSTGRES_PASSWORD}, {name: "POSTGRES_HOST", value: $POSTGRES_HOST}, {name: "POSTGRES_PORT", value: $POSTGRES_PORT}, {name: "RAILS_MASTER_KEY", value: $RAILS_MASTER_KEY}, {name: "REDIS_URL", value: $REDIS_URL}, {name: "ALLOWED_ORIGINS", value: $ALLOWED_ORIGINS}]' task-definition.json > new-task-definition.json
@@ -146,8 +145,8 @@ jobs:
       run: |
         aws ecs register-task-definition --cli-input-json file://new-task-definition.json
         
-    # - name: Update ECS service
-    #   run: |
-    #     aws ecs update-service --cluster ${{ env.CLUSTER_NAME }} --service ${{ env.SERVICE_NAME }} --task-definition $TASK_DEFINITION --desired-count 0
-    #     sleep 60 # wait for tasks to stop
-    #     aws ecs update-service --cluster ${{ env.CLUSTER_NAME }} --service ${{ env.SERVICE_NAME }} --task-definition $TASK_DEFINITION --desired-count ${{ env.DESIRED_COUNT }}
+    - name: Update ECS service
+      run: |
+        aws ecs update-service --cluster ${{ env.CLUSTER_NAME }} --service ${{ env.SERVICE_NAME }} --task-definition $TASK_DEFINITION --desired-count 0
+        sleep 60 # wait for tasks to stop
+        aws ecs update-service --cluster ${{ env.CLUSTER_NAME }} --service ${{ env.SERVICE_NAME }} --task-definition $TASK_DEFINITION --desired-count ${{ env.DESIRED_COUNT }}
