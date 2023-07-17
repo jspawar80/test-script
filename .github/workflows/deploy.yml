@@ -129,7 +129,7 @@ jobs:
     - name: Update task definition with latest image tag and environment variables
       run: |
        ECR_REPOSITORY="lynk-api"
-       AWS_REGION: us-east-1 
+       AWS_REGION:"us-east-1" 
        ACCOUNT_ID="${{ secrets.ACCOUNT_ID }}"
        RAILS_ENV="production"
        POSTGRES_USERNAME=${{ secrets.POSTGRES_USERNAME }}
