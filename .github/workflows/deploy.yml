@@ -111,9 +111,9 @@ jobs:
     - name: Get latest image tag from ECR
       id: ecr
       run: |
-        REPO_NAME="lynk-api"
+        ECR_REPOSITORY="lynk-api"
         AWS_REGION="${{ secrets.AWS_REGION }}"
-        IMAGE_TAG=$(aws ecr list-images --repository-name ${REPO_NAME} --region ${AWS_REGION} --query 'sort_by(imageIds,&imageTag)[-1].imageTag' --output text)
+        IMAGE_TAG=$(aws ecr list-images --repository-name ${ECR_REPOSITORY} --region ${AWS_REGION} --query 'sort_by(imageIds,&imageTag)[-1].imageTag' --output text)
         echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV   
 
     - name: Get current task definition
@@ -128,7 +128,7 @@ jobs:
  
     - name: Update task definition with latest image tag and environment variables
       run: |
-       REPO_NAME="lynk-api"
+       ECR_REPOSITORY="lynk-api"
        ACCOUNT_ID="${{ secrets.ACCOUNT_ID }}"
        RAILS_ENV="production"
        POSTGRES_USERNAME=${{ secrets.POSTGRES_USERNAME }}
@@ -139,7 +139,7 @@ jobs:
        REDIS_URL="redis://lynk-redis-prod.sy2pzb.ng.0001.use1.cache.amazonaws.com:6379/1"
        ALLOWED_ORIGINS=${{ secrets.ALLOWED_ORIGINS }}
 
-       jq --arg IMAGE_TAG ${IMAGE_TAG} --arg RAILS_ENV ${RAILS_ENV} --arg POSTGRES_USERNAME ${POSTGRES_USERNAME} --arg POSTGRES_PASSWORD ${POSTGRES_PASSWORD} --arg POSTGRES_HOST ${POSTGRES_HOST} --arg POSTGRES_PORT ${POSTGRES_PORT} --arg RAILS_MASTER_KEY ${RAILS_MASTER_KEY} --arg REDIS_URL ${REDIS_URL} --arg ALLOWED_ORIGINS ${ALLOWED_ORIGINS} '.containerDefinitions[0].image = "'${ACCOUNT_ID}'.dkr.ecr.'${AWS_REGION}'.amazonaws.com/'${REPO_NAME}':'${IMAGE_TAG}'" | .containerDefinitions[0].environment = [{name: "RAILS_ENV", value: $RAILS_ENV}, {name: "POSTGRES_USERNAME", value: $POSTGRES_USERNAME}, {name: "POSTGRES_PASSWORD", value: $POSTGRES_PASSWORD}, {name: "POSTGRES_HOST", value: $POSTGRES_HOST}, {name: "POSTGRES_PORT", value: $POSTGRES_PORT}, {name: "RAILS_MASTER_KEY", value: $RAILS_MASTER_KEY}, {name: "REDIS_URL", value: $REDIS_URL}, {name: "ALLOWED_ORIGINS", value: $ALLOWED_ORIGINS}]' task-definition.json > new-task-definition.json
+       jq --arg IMAGE_TAG ${IMAGE_TAG} --arg RAILS_ENV ${RAILS_ENV} --arg POSTGRES_USERNAME ${POSTGRES_USERNAME} --arg POSTGRES_PASSWORD ${POSTGRES_PASSWORD} --arg POSTGRES_HOST ${POSTGRES_HOST} --arg POSTGRES_PORT ${POSTGRES_PORT} --arg RAILS_MASTER_KEY ${RAILS_MASTER_KEY} --arg REDIS_URL ${REDIS_URL} --arg ALLOWED_ORIGINS ${ALLOWED_ORIGINS} '.containerDefinitions[0].image = "'${ACCOUNT_ID}'.dkr.ecr.'${AWS_REGION}'.amazonaws.com/'${ECR_REPOSITORY}':'${IMAGE_TAG}'" | .containerDefinitions[0].environment = [{name: "RAILS_ENV", value: $RAILS_ENV}, {name: "POSTGRES_USERNAME", value: $POSTGRES_USERNAME}, {name: "POSTGRES_PASSWORD", value: $POSTGRES_PASSWORD}, {name: "POSTGRES_HOST", value: $POSTGRES_HOST}, {name: "POSTGRES_PORT", value: $POSTGRES_PORT}, {name: "RAILS_MASTER_KEY", value: $RAILS_MASTER_KEY}, {name: "REDIS_URL", value: $REDIS_URL}, {name: "ALLOWED_ORIGINS", value: $ALLOWED_ORIGINS}]' task-definition.json > new-task-definition.json
 
     - name: Register a new revision of the task definition
       run: |
