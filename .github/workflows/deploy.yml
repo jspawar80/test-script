@@ -54,7 +54,7 @@ jobs:
       run: |
        REPO_NAME="lynk-api"
        RAILS_ENV=${{ secrets.RAILS_ENV }}
-       POSTGRES_USERNAME=${{ secrets.POSTGRES_USERNAME }}
+       POSTGRES_USERNAME=lynk-api
        POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
        POSTGRES_HOST=${{ secrets.POSTGRES_HOST }}
        POSTGRES_PORT=${{ secrets.POSTGRES_PORT }}
