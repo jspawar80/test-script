@@ -82,10 +82,10 @@ name: Build and Push to ECR and Deploy to ECS
 
 on:
   push:
-    branches: [master]
+    branches: [main]
 
 env:
-  DESIRED_COUNT: ${{ secrets.DESIRED_COUNT }}
+  DESIRED_COUNT: 1
   AWS_REGION: us-east-1
   ECR_REPOSITORY: lynk-api
   TASK_DEFINITION: lynk-api-prod
