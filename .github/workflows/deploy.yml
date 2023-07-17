@@ -72,7 +72,7 @@ jobs:
 #         aws ecs update-service --cluster ${{ env.CLUSTER_NAME }} --service ${{ env.SERVICE_NAME }} --task-definition $TASK_DEFINITION --desired-count 0
 #         sleep 60 # wait for tasks to stop
 #         aws ecs update-service --cluster ${{ env.CLUSTER_NAME }} --service ${{ env.SERVICE_NAME }} --task-definition $TASK_DEFINITION --desired-coun 1
-
+#
 # name: Build and Push to ECR and Deploy to ECS
 
 # on:
